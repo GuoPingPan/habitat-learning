@@ -1,0 +1,9 @@
+mydata
+data
+1
+.vscode
+.idea
+
+__pycache/*
+
+*/__pycache/*

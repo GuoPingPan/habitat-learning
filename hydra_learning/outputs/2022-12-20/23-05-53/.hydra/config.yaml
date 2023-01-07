@@ -1,0 +1,7 @@
+node:
+  loompa: 10
+  zippity: ${node.loompa}
+  do: oompa ${node.loompa}
+  waldo: ???
+db:
+  drivfsdf: 12

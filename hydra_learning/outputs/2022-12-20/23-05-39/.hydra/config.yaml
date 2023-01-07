@@ -1,0 +1,7 @@
+node:
+  lo: 10
+  zippity: ${node.lo}
+  do: fdsa ${node.lo}
+  waldo: ??
+db:
+  drivfsdf: 12
