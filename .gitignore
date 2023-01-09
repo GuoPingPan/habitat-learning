@@ -4,6 +4,11 @@ data
 .vscode
 .idea
 
-__pycache/*
+__pycache__
 
-*/__pycache/*
+*/__pycache__/*
+
+hydra_learning/outputs
+
+output.mp4
+Untitled.ipynb
