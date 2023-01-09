@@ -1,3 +1,5 @@
+
+''' snake case '''
 # import re
 
 # # 在遇到字符从大写变到小写的时候，利用大写字母作为开头重新开始下一段
@@ -5,11 +7,12 @@
 #     s1 = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", name)
 #     return re.sub("([a-z0-9])([A-Z])", r"\1_\2", s1).lower()
 
-
 # s = 'FasdffferfFSDSfdsf'
 
 # print(_camel_to_snake(name=s))
 
+
+''' watch habitat dataset format '''
 # import habitat
 # from habitat.datasets.pointnav.pointnav_dataset import PointNavDatasetV1
 # from habitat.config import read_write
@@ -18,7 +21,8 @@
 # # print(cfg['habitat']['dataset']['pointnav'])
 # env = habitat.Env(config)
 # scene = PointNavDatasetV1.get_scenes_to_load(config.habitat.dataset)
-#
+
+''' check how to add new DictConfig '''
 # from omegaconf import DictConfig
 #
 # a = DictConfig({'af': 0})
@@ -28,6 +32,7 @@
 # a.simulator.rgb = 10
 # print(a)
 
+''' check model name '''
 # import torch
 # import torchvision.models as models
 # import torch.nn as nn
@@ -40,6 +45,7 @@
 # print(a.shape)
 # print(b.shape)
 
+''' check np.stack '''
 # import  numpy as np
 #
 # a = np.random.rand(10,10)
@@ -50,7 +56,7 @@
 # b = ['q','q','q','q']
 # a,d,f,g = b
 # print(a)
-#
+
 # import torch
 #
 # a = torch.tensor(10).float()
@@ -68,7 +74,7 @@
 # c = torch.stack(b,dim=0)
 # print(c.shape)
 
-
+''' check ._metadata '''
 # from omegaconf.dictconfig import DictConfig
 #
 # a = DictConfig({})
@@ -82,6 +88,7 @@
 #
 # print(a)
 
+''' check skfmm '''
 # import numpy as np
 #
 # a = np.zeros([10,19])
@@ -108,6 +115,7 @@
 # dist -= dist[5,5]
 # print(dist)
 
+''' check property '''
 # noise_model = property(lambda self: object(), lambda self, v: None, lambda self: None)  # default
 #
 # print(noise_model) # 初始化为一个 object
@@ -123,17 +131,18 @@
 # b = a(b,20)
 # print(b)
 
-import gym
-import habitat.utils.gym_definitions
-
-env = gym.make("HabitatPick-v0")
-print(
-    "Pick observation space",
-    {k: v.shape for k, v in env.observation_space.spaces.items()},
-)
-env.close()
-
-# Array observation space
-env = gym.make("HabitatReachState-v0")
-print("Reach observation space", env.observation_space)
-env.close()
+''' check gym '''
+# import gym
+# import habitat.utils.gym_definitions
+#
+# env = gym.make("HabitatPick-v0")
+# print(
+#     "Pick observation space",
+#     {k: v.shape for k, v in env.observation_space.spaces.items()},
+# )
+# env.close()
+#
+# # Array observation space
+# env = gym.make("HabitatReachState-v0")
+# print("Reach observation space", env.observation_space)
+# env.close()

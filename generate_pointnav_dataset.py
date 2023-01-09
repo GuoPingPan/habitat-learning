@@ -19,7 +19,10 @@ num_episodes_per_scene = int(100)
 # test_scene = '/media/pgp/U330/毕设/ImageToStl.com_meshed-poisson.glb'
 # test_scene = '/media/pgp/U330/毕设/objglb/scene.glb'
 # test_scene = '/media/pgp/U330/毕设/objglb/mesh_semantic.obj'
-test_scene = '/media/pgp/U330/毕设/office_1/habitat/mesh_semantic.ply'
+# test_scene = '/media/pgp/U330/毕设/ImageToStl.com_meshed-poisson.glb'
+# test_scene = '/media/pgp/U330/毕设/objglb/output/output.glb'
+
+test_scene = '/media/pgp/U330/毕设/office_1/habitat/mesh_semantic.glb'
 
 
 sim_settings = {
@@ -80,8 +83,8 @@ def make_cfg(settings):
     return habitat_sim.Configuration(sim_cfg,[agent_cfg])
 
 # cfg = make_cfg(sim_settings)
-# # sim = habitat_sim.Simulator()
-# sim = habitat.sims.make_sim('Sim-v0', config = cfg)
+# sim = habitat_sim.Simulator(cfg)
+# sim = habitat.sims.make_sim('Sim-v0', config=cfg)
 
 def _generate_fn(scene):
     cfg = habitat.get_config(config_path='benchmark/nav/pointnav/pointnav_base.yaml')
@@ -93,6 +96,10 @@ def _generate_fn(scene):
     #     print(i,cfg.habitat[i])
 
     sim = habitat.sims.make_sim('Sim-v0', config=cfg.habitat.simulator)
+    navmesh_settings = habitat_sim.NavMeshSettings()
+    sim.recompute_navmesh(
+        sim.pathfinder, navmesh_settings, include_static_objects=False
+    )
 
     dataset = habitat.datasets.make_dataset('PointNav-v1')
     dataset.episodes = list(
@@ -100,6 +107,7 @@ def _generate_fn(scene):
     )
     # print(dataset.episodes[0].scene_id) # /media/pgp/U330/毕设/office_1/habitat/mesh_semantic.ply
     for e in dataset.episodes:
+        print(e.scene_id)
         e.scene_id = e.scene_id[len('/media/pgp/U330/毕设/office_1/'):]
 
     scene_key = os.path.splitext(os.path.basename(scene))[0]
@@ -119,21 +127,23 @@ def _generate_fn(scene):
 #     for _ in pool.imap_unordered(_generate_fn, scenes):
 #         pbar.update()
 
-# _generate_fn(test_scene)
+_generate_fn(test_scene)
+
+with gzip.open(f"./mydata/datasets/pointnav/mydata/v1/all/all.json.gz", "wt") as f:
+    json.dump(dict(episodes=[]), f)
+with open(f"./mydata/datasets/pointnav/mydata/v1/all/all.json", "wt") as f:
+    json.dump(dict(episodes=[]), f)
+
+# a = None
+# with gzip.open(f"/home/pgp/habitat/ANM/data/datasets/pointnav/gibson/v1/val/val.json.gz", "rb") as f:
+#     # for i in f:
+#     #     print('\n')
+#     #     json.loads(i)
+#     a = json.load(f)
 #
-# with gzip.open(f"./mydata/datasets/pointnav/mydata/v1/all/all.json.gz", "wt") as f:
-#     json.dump(dict(episodes=[]), f)
-# with open(f"./mydata/datasets/pointnav/mydata/v1/all/all.json", "wt") as f:
-#     json.dump(dict(episodes=[]), f)
+# print(a)
 
-a = None
-with gzip.open(f"/home/pgp/habitat/ANM/data/datasets/pointnav/gibson/v1/val/val.json.gz", "rb") as f:
-    # for i in f:
-    #     print('\n')
-    #     json.loads(i)
-    a = json.load(f)
 
-print(a)
 # cfg = habitat.get_config(config_path='benchmark/nav/pointnav/pointnav_mydata.yaml')
 #
 # absolute_path_prefix = __file__[:__file__.rfind('/')]+'/'
@@ -147,5 +157,5 @@ print(a)
 # from habitat.datasets.pointnav.pointnav_dataset import PointNavDatasetV1
 #
 #
-# scenes = PointNavDatasetV1.get_scenes_to_load(cfg.habitat.dataset)
+# scenes = PointNavDatasetV1(cfg.habitat.dataset)
 # print(scenes)

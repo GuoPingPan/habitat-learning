@@ -1,3 +1,5 @@
+
+''' quaternion '''
 import quaternion
 import numpy as np
 
@@ -10,9 +12,11 @@ import numpy as np
 # print(quaternion.as_euler_angles(a))
 # print(np.rad2deg(quaternion.as_euler_angles(a)[1]))
 
-
+''' np.bincount '''
 # print(np.bincount([1,2,3,4]))
 
+
+''' skfmm '''
 # from numpy import ma
 # import skfmm
 #
@@ -111,6 +115,7 @@ import numpy as np
 # dd = skfmm.distance(b,dx=1)
 # print(dd)
 
+''' property '''
 class Person:
     def __init__(self, name, sex):
         self._name = name

@@ -7,3 +7,8 @@ data
 __pycache/*
 
 */__pycache/*
+
+hydra_learning/outputs
+
+output.mp4
+Untitled.ipynb
