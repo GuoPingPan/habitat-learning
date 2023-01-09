@@ -4,7 +4,10 @@ data
 .vscode
 .idea
 
+
 __pycache__
+__pycache__/*
+.ipynb_checkpoints
 
 */__pycache__/*
 
