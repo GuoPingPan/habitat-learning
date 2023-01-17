@@ -1,9 +1,9 @@
 import math
 import os
+import os.path as osp
 import random
 import sys
 
-import git
 import imageio
 import magnum as mn
 import numpy as np
@@ -17,6 +17,15 @@ import habitat_sim
 from habitat_sim.utils import common as utils
 from habitat_sim.utils import viz_utils as vut
 
+work_dir = '/home/pgp/habitat/habitat-learning'
+data_path = osp.join(work_dir, 'data')
+output_dir = osp.join(work_dir, 'output/official_tutorials/BasicNavigation')
+if not os.path.exists(output_dir):
+    os.mkdir(output_dir)
+
+''' **************************** init **************************** '''
+
+
 # Change to do something like this maybe: https://stackoverflow.com/a/41432704
 def display_sample(rgb_obs, semantic_obs=np.array([]), depth_obs=np.array([])):
     ''' display rgb、semantic、depth image '''
@@ -27,14 +36,18 @@ def display_sample(rgb_obs, semantic_obs=np.array([]), depth_obs=np.array([])):
     arr = [rgb_img]
     titles = ["rgb"]
     if semantic_obs.size != 0:
+        # PIL 的 P 模式
         semantic_img = Image.new("P", (semantic_obs.shape[1], semantic_obs.shape[0]))
         semantic_img.putpalette(d3_40_colors_rgb.flatten())
+
+        # 类别数%40
         semantic_img.putdata((semantic_obs.flatten() % 40).astype(np.uint8))
         semantic_img = semantic_img.convert("RGBA")
         arr.append(semantic_img)
         titles.append("semantic")
 
     if depth_obs.size != 0:
+        # todo: depth image的单位
         depth_img = Image.fromarray((depth_obs / 10 * 255).astype(np.uint8), mode="L")
         arr.append(depth_img)
         titles.append("depth")
@@ -68,6 +81,10 @@ else:
 if display:
     from habitat.utils.visualizations import maps
 
+''' **************************** create simulator **************************** '''
+
+# download dataset
+os.system('python -m habitat_sim.utils.datasets_download --uids mp3d_example_scene --data-path /home/pgp/habitat/data/')
 
 # This is the scene we are going to load.
 # we support a variety of mesh formats, such as .glb, .gltf, .obj, .ply
@@ -80,6 +97,7 @@ sim_settings = {
     "width": 256,  # Spatial resolution of the observations
     "height": 256,
 }
+
 
 def make_simple_cfg(settings):
     sim_cfg = habitat_sim.SimulatorConfiguration()
@@ -98,7 +116,6 @@ def make_simple_cfg(settings):
             sensor_layers.append(habitat_sim.SensorType.SEMANTIC)
 
     for name, layer in zip(sensor_layer_names, sensor_layers):
-        print(name,layer)
         sensor_spec = habitat_sim.CameraSensorSpec()
         sensor_spec.uuid = name
         sensor_spec.sensor_type = layer
@@ -107,11 +124,11 @@ def make_simple_cfg(settings):
         sensor_spec.sensor_subtype = habitat_sim.SensorSubType.PINHOLE
         sensor_specs.append(sensor_spec)
 
-
     agent_cfg = habitat_sim.agent.AgentConfiguration()
     agent_cfg.sensor_specifications = sensor_specs
 
     return habitat_sim.Configuration(sim_cfg, [agent_cfg])
+
 
 cfg = make_simple_cfg(sim_settings)
 
@@ -119,8 +136,11 @@ try:  # Needed to handle out of order cell run in Colab
     sim.close()
 except NameError:
     pass
+
 sim = habitat_sim.Simulator(cfg)
 
+# simple agent from simulator
+# todo: what kinds of default agent?
 agent = sim.initialize_agent(sim_settings['default_agent'])
 agent_state = habitat_sim.AgentState()
 agent_state.position = np.array([0.6, 0, 0])
@@ -133,6 +153,7 @@ print('agent_state: rotation', agent_state.rotation)
 action_names = list(cfg.agents[sim_settings["default_agent"]].action_space.keys())
 print("Discrete action space: ", action_names)
 
+
 def navigateAndSee(action=""):
     if action in action_names:
         observations = sim.step(action)
@@ -142,19 +163,19 @@ def navigateAndSee(action=""):
             display_sample(observations["color_sensor"], observations["semantic_sensor"], observations["depth_sensor"])
 
 
-# action = "turn_right"
-# navigateAndSee(action)
-#
-# action = "turn_right"
-# navigateAndSee(action)
-#
-# action = "move_forward"
-# navigateAndSee(action)
-#
-# action = "turn_left"
-# navigateAndSee(action)
-import habitat_sim.utils.datasets_download
-##############################################################################
+action = "turn_right"
+navigateAndSee(action)
+
+action = "turn_right"
+navigateAndSee(action)
+
+action = "move_forward"
+navigateAndSee(action)
+
+action = "turn_left"
+navigateAndSee(action)
+
+''' **************************** complicate simulator **************************** '''
 
 test_scene = "../data/scene_datasets/mp3d_example/17DRP5sb8fy/17DRP5sb8fy.glb"
 mp3d_scene_dataset = "../data/scene_datasets/mp3d_example/mp3d.scene_dataset_config.json"
@@ -176,6 +197,7 @@ sim_settings = {
     "seed": 1,  # used in the random navigation
     "enable_physics": False,  # kinematics only
 }
+
 
 def make_cfg(settings):
     sim_cfg = habitat_sim.SimulatorConfiguration()
@@ -228,6 +250,7 @@ def make_cfg(settings):
 
     return habitat_sim.Configuration(sim_cfg, [agent_cfg])
 
+
 cfg = make_cfg(sim_settings)
 # Needed to handle out of order cell run in Colab
 try:  # Got to make initialization idiot proof
@@ -237,6 +260,7 @@ except NameError:
 sim = habitat_sim.Simulator(cfg)
 
 
+# print scene
 def print_scene_recur(scene, limit_output=10):
     print(
         f"House has {len(scene.levels)} levels, {len(scene.regions)} regions and {len(scene.objects)} objects"
@@ -266,8 +290,10 @@ def print_scene_recur(scene, limit_output=10):
 
 # Print semantic annotation information (id, category, bounding box details)
 # about levels, regions and objects in a hierarchical fashion
+# todo: scene is what kind of type?
 scene = sim.semantic_scene
-# print_scene_recur(scene)
+print(type(scene))
+print_scene_recur(scene)
 
 # the randomness is needed when choosing the actions
 random.seed(sim_settings["seed"])
@@ -284,37 +310,32 @@ agent_state = agent.get_state()
 print("agent_state: position", agent_state.position, "rotation", agent_state.rotation)
 
 total_frames = 0
+max_frames = 5
 action_names = list(cfg.agents[sim_settings["default_agent"]].action_space.keys())
 
-max_frames = 5
+while total_frames < max_frames:
+    action = random.choice(action_names)
+    print("action", action)
+    observations = sim.step(action)
+    rgb = observations["color_sensor"]
+    semantic = observations["semantic_sensor"]
+    depth = observations["depth_sensor"]
 
-# while total_frames < max_frames:
-#     action = random.choice(action_names)
-#     print("action", action)
-#     observations = sim.step(action)
-#     rgb = observations["color_sensor"]
-#     semantic = observations["semantic_sensor"]
-#     depth = observations["depth_sensor"]
-#
-#     if display:
-#         display_sample(rgb, semantic, depth)
-#
-#     total_frames += 1
+    if display:
+        display_sample(rgb, semantic, depth)
+
+    total_frames += 1
 
 ##############################################################################
 
-''' NavMesh '''
+''' **************************** play with navmesh **************************** '''
 
-# The following example cell defines a matplotlib function
-# to display a top down map with optional key points overlay.
-# It then generates a topdown map of the current scene
-# using the [minimum y] coordinate of the scene bounding box as the height,
-# or an [optionally configured custom height].
-# Note that this height is in scene global coordinates,
-# so we cannot assume that 0 is the bottom floor.
 
 
 def convert_points_to_topdown(pathfinder, points, meters_per_pixel):
+    ''' Convert the x,z in habitat to x,y
+        It is a little confusing, because minor the bounds
+    '''
     points_topdown = []
     bounds = pathfinder.get_bounds()
     for point in points:
@@ -323,6 +344,7 @@ def convert_points_to_topdown(pathfinder, points, meters_per_pixel):
         py = (point[2] - bounds[0][2]) / meters_per_pixel
         points_topdown.append(np.array([px, py]))
     return points_topdown
+
 
 def display_map(topdown_map, key_points=None):
     plt.figure(figsize=(12, 8))
@@ -335,31 +357,37 @@ def display_map(topdown_map, key_points=None):
             plt.plot(point[0], point[1], marker="o", markersize=10, alpha=0.8)
     plt.show(block=False)
 
+
 meters_per_pixel = 0.1
-custom_height = False
+self_decide_height = False
 height = 1
 
 down_bound = sim.pathfinder.get_bounds()[0]
 up_bound = sim.pathfinder.get_bounds()[1]
-
 print("The NavMesh bounds are:\n"
       "\tdown_bound: {}\n"
-      "\tup_bound: {}".format(down_bound, up_bound) )
+      "\tup_bound: {}".format(down_bound, up_bound))
 
-if not custom_height:
+if not self_decide_height:
     height = sim.pathfinder.get_bounds()[0][1]
-
-output_path = 'output'
 
 if not sim.pathfinder.is_loaded:
     print("Pathfinder not initialized, aborting.")
 else:
-    # @markdown You can get the topdown map directly from the Habitat-sim API with *PathFinder.get_topdown_view*.
+
+    # Habitat-sim API
+    # @markdown You can get the topdown map directly from the
+    # Habitat-sim API with *PathFinder.get_topdown_view*.
     # This map is a 2D boolean array
     sim_topdown_map = sim.pathfinder.get_topdown_view(meters_per_pixel, height)
+    print("Displaying the raw map from get_topdown_view:")
+    display_map(sim_topdown_map)
 
     if display:
-        # @markdown Alternatively, you can process the map using the Habitat-Lab [maps module](https://github.com/facebookresearch/habitat-lab/blob/main/habitat/utils/visualizations/maps.py)
+
+        # Habitat-Lab
+        # @markdown Alternatively, you can process the map using the
+        # Habitat-Lab [maps module](https://github.com/facebookresearch/habitat-lab/blob/main/habitat/utils/visualizations/maps.py)
         hablab_topdown_map = maps.get_topdown_map(
             sim.pathfinder, height, meters_per_pixel=meters_per_pixel
         )
@@ -367,19 +395,18 @@ else:
             [[255, 255, 255], [128, 128, 128], [0, 0, 0]], dtype=np.uint8
         )
         hablab_topdown_map = recolor_map[hablab_topdown_map]
-        # print("Displaying the raw map from get_topdown_view:")
-        # display_map(sim_topdown_map)
-        # print("Displaying the map from the Habitat-Lab maps module:")
-        # display_map(hablab_topdown_map)
+        print("Displaying the map from the Habitat-Lab maps module:")
+        display_map(hablab_topdown_map)
 
         # easily save a map to file:
-        map_filename = os.path.join(output_path, "top_down_map.png")
+        map_filename = os.path.join(output_dir, "top_down_map.png")
         imageio.imsave(map_filename, hablab_topdown_map)
 
 if not sim.pathfinder.is_loaded:
     print("Pathfinder not initialized, aborting.")
 else:
-    # @markdown NavMesh area and bounding box can be queried via *navigable_area* and *get_bounds* respectively.
+    # @markdown NavMesh area and bounding box can be queried
+    # via *navigable_area* and *get_bounds* respectively.
     print("NavMesh area = " + str(sim.pathfinder.navigable_area))
     print("Bounds = " + str(sim.pathfinder.get_bounds()))
 
@@ -390,21 +417,23 @@ else:
     print("Random navigable point : " + str(nav_point))
     print("Is point navigable? " + str(sim.pathfinder.is_navigable(nav_point)))
 
+
+    ''' island '''
+
     # @markdown The radius of the minimum containing circle (with vertex centroid origin) for the isolated navigable island of a point can be queried with *island_radius*.
     # @markdown This is analogous to the size of the point's connected component and can be used to check that a queried navigable point is on an interesting surface (e.g. the floor), rather than a small surface (e.g. a table-top).
-
     # @markdown 一个点的孤立通航岛的最小包含圆（以顶点质心为原点）的半径可以用*island_radius*查询。
     # @markdown 这类似于点的连接分量的大小，可用于检查查询的可导航点是否在有趣的表面（例如地板）上，而不是小表面（例如桌面）。
     print("Nav island radius : " + str(sim.pathfinder.island_radius(nav_point)))
 
-
     max_search_radius = 2.0  # @param {type:"number"}
-    print(
-        "Distance to obstacle: "
-        + str(sim.pathfinder.distance_to_closest_obstacle(nav_point, max_search_radius))
-    )
+    print("Distance to obstacle: "
+        + str(sim.pathfinder.distance_to_closest_obstacle(nav_point, max_search_radius)))
 
 
+    ''' hit '''
+
+    # todo: 不懂
     hit_record = sim.pathfinder.closest_obstacle_surface_point(
         nav_point, max_search_radius
     )
@@ -412,7 +441,6 @@ else:
     print(" point: " + str(hit_record.hit_pos))
     print(" normal: " + str(hit_record.hit_normal))
     print(" distance: " + str(hit_record.hit_dist))
-
 
     vis_points = [nav_point]
 
@@ -423,16 +451,16 @@ else:
         # @markdown Points near the boundary or above the NavMesh can be snapped onto it.
         perturbed_point = hit_record.hit_pos - hit_record.hit_normal * 0.2
         print("Perturbed point : " + str(perturbed_point))
-        print(
-            "Is point navigable? " + str(sim.pathfinder.is_navigable(perturbed_point))
-        )
+        print("Is point navigable? " + str(sim.pathfinder.is_navigable(perturbed_point)))
+
         snapped_point = sim.pathfinder.snap_point(perturbed_point)
         print("Snapped point : " + str(snapped_point))
         print("Is point navigable? " + str(sim.pathfinder.is_navigable(snapped_point)))
         vis_points.append(snapped_point)
 
-    # @markdown ---
-    # @markdown ### Visualization
+
+    ''' sample point topdown '''
+
     # @markdown Running this cell generates a topdown visualization of the NavMesh with sampled points overlayed.
     meters_per_pixel = 0.1  # @param {type:"slider", min:0.01, max:1.0, step:0.01}
 
@@ -451,31 +479,285 @@ else:
         print("\nDisplay the map with key_point overlay:")
         display_map(top_down_map, key_points=xy_vis_points)
 
-    # initialize a new simulator with the apartment_1 scene
-    # this will automatically load the accompanying .navmesh file
-    sim_settings["scene"] = "../data/scene_datasets/habitat-test-scenes/apartment_1.glb"
-    cfg = make_cfg(sim_settings)
-    try:  # Got to make initialization idiot proof
-        sim.close()
-    except NameError:
-        pass
-    sim = habitat_sim.Simulator(cfg)
+# todo: haven't read
+def path_queries_on_navmesh():
+    # @markdown ## Pathfinding Queries on NavMesh
 
-    # the navmesh can also be explicitly loaded
-    sim.pathfinder.load_nav_mesh(
-        "../data/scene_datasets/habitat-test-scenes/apartment_1.navmesh"
-    )
+    # @markdown The shortest path between valid points on the NavMesh can be queried as shown in this example.
+
+    # @markdown With a valid PathFinder instance:
+    if not sim.pathfinder.is_loaded:
+        print("Pathfinder not initialized, aborting.")
+    else:
+        seed = 4  # @param {type:"integer"}
+        sim.pathfinder.seed(seed)
+
+        # fmt off
+        # @markdown 1. Sample valid points on the NavMesh for agent spawn location and pathfinding goal.
+        # fmt on
+        sample1 = sim.pathfinder.get_random_navigable_point()
+        sample2 = sim.pathfinder.get_random_navigable_point()
+
+        # @markdown 2. Use ShortestPath module to compute path between samples.
+        path = habitat_sim.ShortestPath()
+        path.requested_start = sample1
+        path.requested_end = sample2
+        found_path = sim.pathfinder.find_path(path)
+        geodesic_distance = path.geodesic_distance
+        path_points = path.points
+        # @markdown - Success, geodesic path length, and 3D points can be queried.
+        print("found_path : " + str(found_path))
+        print("geodesic_distance : " + str(geodesic_distance))
+        print("path_points : " + str(path_points))
+
+        # @markdown 3. Display trajectory (if found) on a topdown map of ground floor
+        if found_path:
+            meters_per_pixel = 0.025
+            scene_bb = sim.get_active_scene_graph().get_root_node().cumulative_bb
+            height = scene_bb.y().min
+            if display:
+                top_down_map = maps.get_topdown_map(
+                    sim.pathfinder, height, meters_per_pixel=meters_per_pixel
+                )
+                recolor_map = np.array(
+                    [[255, 255, 255], [128, 128, 128], [0, 0, 0]], dtype=np.uint8
+                )
+                top_down_map = recolor_map[top_down_map]
+                grid_dimensions = (top_down_map.shape[0], top_down_map.shape[1])
+                # convert world trajectory points to maps module grid points
+                trajectory = [
+                    maps.to_grid(
+                        path_point[2],
+                        path_point[0],
+                        grid_dimensions,
+                        pathfinder=sim.pathfinder,
+                    )
+                    for path_point in path_points
+                ]
+                grid_tangent = mn.Vector2(
+                    trajectory[1][1] - trajectory[0][1], trajectory[1][0] - trajectory[0][0]
+                )
+                path_initial_tangent = grid_tangent / grid_tangent.length()
+                initial_angle = math.atan2(path_initial_tangent[0], path_initial_tangent[1])
+                # draw the agent and trajectory on the map
+                maps.draw_path(top_down_map, trajectory)
+                maps.draw_agent(
+                    top_down_map, trajectory[0], initial_angle, agent_radius_px=8
+                )
+                print("\nDisplay the map with agent and path overlay:")
+                display_map(top_down_map)
+
+            # @markdown 4. (optional) Place agent and render images at trajectory points (if found).
+            display_path_agent_renders = True  # @param{type:"boolean"}
+            if display_path_agent_renders:
+                print("Rendering observations at path points:")
+                tangent = path_points[1] - path_points[0]
+                agent_state = habitat_sim.AgentState()
+                for ix, point in enumerate(path_points):
+                    if ix < len(path_points) - 1:
+                        tangent = path_points[ix + 1] - point
+                        agent_state.position = point
+                        tangent_orientation_matrix = mn.Matrix4.look_at(
+                            point, point + tangent, np.array([0, 1.0, 0])
+                        )
+                        tangent_orientation_q = mn.Quaternion.from_matrix(
+                            tangent_orientation_matrix.rotation()
+                        )
+                        agent_state.rotation = utils.quat_from_magnum(tangent_orientation_q)
+                        agent.set_state(agent_state)
+
+                        observations = sim.get_sensor_observations()
+                        rgb = observations["color_sensor"]
+                        semantic = observations["semantic_sensor"]
+                        depth = observations["depth_sensor"]
+
+                        if display:
+                            display_sample(rgb, semantic, depth)
 
 
-print('**************************************************************************************************************************************')
-# @title Discrete and Continuous Navigation:
+''' **************************** load navmesh **************************** '''
+
+
+# initialize a new simulator with the apartment_1 scene
+# this will automatically load the accompanying .navmesh file
+sim_settings["scene"] = "../data/scene_datasets/habitat-test-scenes/apartment_1.glb"
+cfg = make_cfg(sim_settings)
+try:  # Got to make initialization idiot proof
+    sim.close()
+except NameError:
+    pass
+sim = habitat_sim.Simulator(cfg)
+
+# the navmesh can also be explicitly loaded
+sim.pathfinder.load_nav_mesh(
+    "../data/scene_datasets/habitat-test-scenes/apartment_1.navmesh"
+)
+
+''' **************************** recompute navmesh **************************** '''
+
+navmesh_settings = habitat_sim.NavMeshSettings()
+
+use_self_decide_settings = False  # @param {type:"boolean"}
+sim.navmesh_visualization = True  # @param {type:"boolean"}
+
+# Habitat-sim defaults (e.g. for point-nav tasks)
+navmesh_settings.set_defaults()
+
+# custom settings
+if use_self_decide_settings:
+    # fmt: off
+    #@markdown ---
+    #@markdown ## Configure custom settings (if use_custom_settings):
+    #@markdown Configure the following NavMeshSettings for customized NavMesh recomputation.
+    #@markdown **Voxelization parameters**:
+    navmesh_settings.cell_size = 0.05 #@param {type:"slider", min:0.01, max:0.2, step:0.01}
+    #default = 0.05
+    navmesh_settings.cell_height = 0.2 #@param {type:"slider", min:0.01, max:0.4, step:0.01}
+    #default = 0.2
+
+    #@markdown **Agent parameters**:
+    navmesh_settings.agent_height = 1.5 #@param {type:"slider", min:0.01, max:3.0, step:0.01}
+    #default = 1.5
+    navmesh_settings.agent_radius = 0.1 #@param {type:"slider", min:0.01, max:0.5, step:0.01}
+    #default = 0.1
+    navmesh_settings.agent_max_climb = 0.2 #@param {type:"slider", min:0.01, max:0.5, step:0.01}
+    #default = 0.2
+    navmesh_settings.agent_max_slope = 45 #@param {type:"slider", min:0, max:85, step:1.0}
+    # default = 45.0
+    # fmt: on
+    # @markdown **Navigable area filtering options**:
+    navmesh_settings.filter_low_hanging_obstacles = True  # @param {type:"boolean"}
+    # default = True
+    navmesh_settings.filter_ledge_spans = True  # @param {type:"boolean"}
+    # default = True
+    navmesh_settings.filter_walkable_low_height_spans = True  # @param {type:"boolean"}
+    # default = True
+
+    # fmt: off
+    #@markdown **Detail mesh generation parameters**:
+    #@markdown For more details on the effects
+    navmesh_settings.region_min_size = 20 #@param {type:"slider", min:0, max:50, step:1}
+    #default = 20
+    navmesh_settings.region_merge_size = 20 #@param {type:"slider", min:0, max:50, step:1}
+    #default = 20
+    navmesh_settings.edge_max_len = 12.0 #@param {type:"slider", min:0, max:50, step:1}
+    #default = 12.0
+    navmesh_settings.edge_max_error = 1.3 #@param {type:"slider", min:0, max:5, step:0.1}
+    #default = 1.3
+    navmesh_settings.verts_per_poly = 6.0 #@param {type:"slider", min:3, max:6, step:1}
+    #default = 6.0
+    navmesh_settings.detail_sample_dist = 6.0 #@param {type:"slider", min:0, max:10.0, step:0.1}
+    #default = 6.0
+    navmesh_settings.detail_sample_max_error = 1.0 #@param {type:"slider", min:0, max:10.0, step:0.1}
+    # default = 1.0
+    # fmt: on
+
+navmesh_success = sim.recompute_navmesh(
+    sim.pathfinder, navmesh_settings, include_static_objects=False
+)
+
+if not navmesh_success:
+    print("Failed to build the navmesh! Try different parameters?")
+else:
+
+    agent_state = sim.agents[0].get_state()
+    set_random_valid_state = False  # @param {type:"boolean"}
+    seed = 5  # @param {type:"integer"}
+    sim.seed(seed)
+    orientation = 0
+    if set_random_valid_state:
+        agent_state.position = sim.pathfinder.get_random_navigable_point()
+        orientation = random.random() * math.pi * 2.0
+    # @markdown Optionally configure the agent state (overrides random state):
+    set_agent_state = True  # @param {type:"boolean"}
+    try_to_make_valid = True  # @param {type:"boolean"}
+    if set_agent_state:
+        pos_x = 0  # @param {type:"number"}
+        pos_y = 0  # @param {type:"number"}
+        pos_z = 0.0  # @param {type:"number"}
+        # @markdown Y axis rotation (radians):
+        orientation = 1.56  # @param {type:"number"}
+        agent_state.position = np.array([pos_x, pos_y, pos_z])
+        if try_to_make_valid:
+            snapped_point = np.array(sim.pathfinder.snap_point(agent_state.position))
+            if not np.isnan(np.sum(snapped_point)):
+                print("Successfully snapped point to: " + str(snapped_point))
+                agent_state.position = snapped_point
+    if set_agent_state or set_random_valid_state:
+        agent_state.rotation = utils.quat_from_magnum(
+            mn.Quaternion.rotation(-mn.Rad(orientation), mn.Vector3(0, 1.0, 0))
+        )
+        sim.agents[0].set_state(agent_state)
+
+    agent_state = sim.agents[0].get_state()
+    print("Agent state: " + str(agent_state))
+    print(" position = " + str(agent_state.position))
+    print(" rotation = " + str(agent_state.rotation))
+    print(" orientation (about Y) = " + str(orientation))
+
+    observations = sim.get_sensor_observations()
+    rgb = observations["color_sensor"]
+    semantic = observations["semantic_sensor"]
+    depth = observations["depth_sensor"]
+
+    if display:
+        display_sample(rgb, semantic, depth)
+        # @markdown **Map parameters**:
+        # fmt: off
+        meters_per_pixel = 0.025  # @param {type:"slider", min:0.01, max:0.1, step:0.005}
+        # fmt: on
+        agent_pos = agent_state.position
+        # topdown map at agent position
+        top_down_map = maps.get_topdown_map(
+            sim.pathfinder, height=agent_pos[1], meters_per_pixel=meters_per_pixel
+        )
+        recolor_map = np.array(
+            [[255, 255, 255], [128, 128, 128], [0, 0, 0]], dtype=np.uint8
+        )
+        top_down_map = recolor_map[top_down_map]
+        grid_dimensions = (top_down_map.shape[0], top_down_map.shape[1])
+        # convert world agent position to maps module grid point
+        agent_grid_pos = maps.to_grid(
+            agent_pos[2], agent_pos[0], grid_dimensions, pathfinder=sim.pathfinder
+        )
+        agent_forward = utils.quat_to_magnum(
+            sim.agents[0].get_state().rotation
+        ).transform_vector(mn.Vector3(0, 0, -1.0))
+        agent_orientation = math.atan2(agent_forward[0], agent_forward[2])
+        # draw the agent and trajectory on the map
+        maps.draw_agent(
+            top_down_map, agent_grid_pos, agent_orientation, agent_radius_px=8
+        )
+        print("\nDisplay topdown map with agent:")
+        display_map(top_down_map)
+
+
+# Saving the NavMesh
+
+if sim.pathfinder.is_loaded:
+    navmesh_save_path = "/content/habitat-sim/data/test_saving.navmesh" #@param {type:"string"}
+    sim.pathfinder.save_nav_mesh(navmesh_save_path)
+    print('Saved NavMesh to "' + navmesh_save_path + '"')
+    sim.pathfinder.load_nav_mesh(navmesh_save_path)
+
+''' **************************** Discrete and Continuous Navigation **************************** '''
+
+# Discrete and Continuous Navigation:
+'''
+## What is sliding?
+Most game engines allow agents to slide along obstacles when commanding actions 
+which collide with the environment. While this is a reasonable behavior in games,
+it does not accuractely reflect the result of collisions between robotic agents and the environment.
+
+We note that **allowing sliding** makes training easier and results in higher simulation performance, 
+but **hurts sim-2-real transfer** of trained policies.
+
+'''
+
 
 # @markdown Take moment to run this cell a couple times and note the differences between discrete and continuous navigation with and without sliding.
 
-# @markdown ---
-# @markdown ### Set example parameters:
-seed = 7  # @param {type:"integer"}
-# @markdown Optionally navigate on the currently configured scene and NavMesh instead of re-loading with defaults:
+seed = 7
 use_current_scene = False  # @param {type:"boolean"}
 
 output_directory = 'output'
@@ -483,39 +765,41 @@ output_directory = 'output'
 sim_settings["seed"] = seed
 if not use_current_scene:
     # reload a default nav scene
-    sim_settings[
-        "scene"
-    ] = "./data/scene_datasets/mp3d_example/17DRP5sb8fy/17DRP5sb8fy.glb"
+    sim_settings["scene"] = "./data/scene_datasets/mp3d_example/17DRP5sb8fy/17DRP5sb8fy.glb"
     cfg = make_cfg(sim_settings)
     try:  # make initialization Colab cell order proof
         sim.close()
     except NameError:
         pass
     sim = habitat_sim.Simulator(cfg)
+
 random.seed(sim_settings["seed"])
 sim.seed(sim_settings["seed"])
+
 # set new initial state
 sim.initialize_agent(agent_id=0)
 agent = sim.agents[0]
 
-# @markdown Seconds to simulate:
-sim_time = 10  # @param {type:"integer"}
+# Seconds to simulate:
+sim_time = 10
 
-# @markdown Optional continuous action space parameters:
-continuous_nav = True  # @param {type:"boolean"}
+# Optional continuous action space parameters:
+continuous_nav = True
 
 # defaults for discrete control
 # control frequency (actions/sec):
 control_frequency = 3
 # observation/integration frames per action
 frame_skip = 1
-if continuous_nav:
-    control_frequency = 5  # @param {type:"slider", min:1, max:30, step:1}
-    frame_skip = 12  # @param {type:"slider", min:1, max:30, step:1}
 
+if continuous_nav:
+    control_frequency = 5
+    frame_skip = 12
 
 fps = control_frequency * frame_skip
 print("fps = " + str(fps))
+
+
 control_sequence = []
 for _action in range(int(sim_time * control_frequency)):
     if continuous_nav:
@@ -529,6 +813,7 @@ for _action in range(int(sim_time * control_frequency)):
     else:
         control_sequence.append(random.choice(action_names))
 
+# todo: physic?
 # create and configure a new VelocityControl structure
 vel_control = habitat_sim.physics.VelocityControl()
 vel_control.controlling_lin_vel = True
@@ -567,6 +852,8 @@ for iteration in range(2):
             discrete_action = agent.agent_config.action_space[action]
 
             did_collide = False
+
+            # agent body action
             if agent.controls.is_body_action(discrete_action.name):
                 did_collide = agent.controls.action(
                     agent.scene_node,
@@ -574,6 +861,8 @@ for iteration in range(2):
                     discrete_action.actuation,
                     apply_filter=True,
                 )
+
+            # agent sensor action
             else:
                 for _, v in agent._sensors.items():
                     habitat_sim.errors.assert_obj_valid(v)
@@ -587,6 +876,8 @@ for iteration in range(2):
         # simulate and collect frames
         for _frame in range(frame_skip):
             if continuous_nav:
+
+                # 将方向转向机器人局部坐标系下,并且根据时间积分
                 # Integrate the velocity and apply the transform.
                 # Note: this can be done at a higher frequency for more accuracy
                 agent_state = agent.state
@@ -614,10 +905,10 @@ for iteration in range(2):
 
                 # Check if a collision occured
                 dist_moved_before_filter = (
-                    target_rigid_state.translation - previous_rigid_state.translation
+                        target_rigid_state.translation - previous_rigid_state.translation
                 ).dot()
                 dist_moved_after_filter = (
-                    end_pos - previous_rigid_state.translation
+                        end_pos - previous_rigid_state.translation
                 ).dot()
 
                 # NB: There are some cases where ||filter_end - end_pos|| > 0 when a
@@ -653,4 +944,3 @@ for iteration in range(2):
 
     sim.reset()
 
-# [/embodied_agent_navmesh]
