@@ -19,7 +19,7 @@ from habitat_sim.utils import viz_utils as vut
 
 work_dir = '/home/pgp/habitat/habitat-learning'
 data_path = osp.join(work_dir, 'data')
-output_dir = osp.join(work_dir, 'output/official_tutorials/BasicNavigation')
+output_dir = osp.join(work_dir, 'output/official_tutorials/Habitat_sim_for_Navigation')
 if not os.path.exists(output_dir):
     os.mkdir(output_dir)
 

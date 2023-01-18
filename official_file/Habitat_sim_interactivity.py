@@ -679,6 +679,7 @@ sim.navmesh_visualization = False
 ''' Summary
     为了添加控制object，其基本步骤如下
     1. 获取handle：    cube_handle = obj_attr_mgr.get_template_handles("cubeWireframe")[0]
+        句柄（Handle）是一个是用来标识对象或者项目的标识符
     2. 获取template：  cube_template_cpy = obj_attr_mgr.get_template_by_handle(cube_handle)
     3. 设置scale：     cube_template_cpy.scale = target_zone.size()
     4. 设置碰撞属性：    cube_template_cpy.is_collidable = False
